@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planck's Constant · LED Lab</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#05070f; --panel:#0c1222; --panel2:#101a30; --line:#1f2c48; --text:#dbe6ff; --muted:#7f92b8;
+  --accent:#ff2a3d; --accent-rgb:255,42,61;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+body{
+  background:
+    radial-gradient(900px 500px at 15% -10%, rgba(var(--accent-rgb),.14), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(58,123,255,.10), transparent 60%),
+    var(--bg);
+  min-height:100vh;transition:background .5s;
+}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+h1{margin:0;font-size:clamp(1.3rem,3vw,2rem);letter-spacing:.5px;font-weight:700}
+h1 span{color:var(--accent);text-shadow:0 0 18px rgba(var(--accent-rgb),.7);transition:color .4s}
+.sub{color:var(--muted);font-size:.9rem;margin-top:4px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:.78rem;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03);color:var(--muted)}
+.chip b{color:var(--text)}
+.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);gap:16px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03)}
+.card h2{margin:0 0 12px;font-size:.8rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.canvas-card{padding:10px}
+canvas#sim{width:100%;display:block;border-radius:12px;background:#060a16;border:1px solid var(--line)}
+.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.cbtn{cursor:pointer;border:1px solid var(--line);background:#0a1020;color:var(--text);padding:12px 6px;border-radius:12px;font-weight:600;font-size:.95rem;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .25s}
+.cbtn i{width:22px;height:22px;border-radius:50%;display:block;box-shadow:0 0 12px currentColor;background:currentColor}
+.cbtn small{font-weight:400;color:var(--muted);font-size:.7rem;font-family:var(--mono)}
+.cbtn:hover{transform:translateY(-2px)}
+.cbtn.active{border-color:currentColor;box-shadow:0 0 22px -4px currentColor, inset 0 0 18px -10px currentColor;background:rgba(255,255,255,.04)}
+.vrow{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.vbig{font-family:var(--mono);font-size:2.3rem;font-weight:700;color:var(--accent);text-shadow:0 0 18px rgba(var(--accent-rgb),.6);transition:color .4s}
+.vbig small{font-size:1rem;color:var(--muted);margin-left:4px}
+input[type=range]{width:100%;accent-color:var(--accent);height:30px;cursor:pointer}
+.scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-top:-4px}
+.btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{flex:1;min-width:70px;cursor:pointer;background:#0a1020;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 8px;font-family:var(--mono);font-size:.9rem;transition:all .2s;user-select:none;touch-action:manipulation}
+.btn:hover{border-color:var(--accent);box-shadow:0 0 14px -4px var(--accent)}
+.btn:active{transform:scale(.96)}
+.btn.wide{flex:2}
+.readouts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.ro{background:#080d1b;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.ro span{display:block;font-size:.66rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.ro b{font-family:var(--mono);font-size:1rem}
+.ro.full{grid-column:1/-1}
+.status{font-family:var(--mono);font-weight:700}
+.on{color:var(--accent);text-shadow:0 0 10px rgba(var(--accent-rgb),.8)}
+.off{color:#8a94ab}
+.sec{margin-top:16px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;margin-top:16px}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.82rem}
+.tw{overflow-x:auto}
+th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:.7rem;letter-spacing:1px;text-transform:uppercase}
+td.lab{text-align:left;font-weight:700}
+td.lab i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:currentColor;box-shadow:0 0 8px currentColor}
+td.clk{cursor:pointer;transition:background .15s}
+td.clk:hover{background:rgba(255,255,255,.08);color:#fff}
+td.avg{font-weight:700;color:#fff;background:rgba(255,255,255,.03)}
+tr.act td{background:rgba(var(--accent-rgb),.10)}
+.hint{color:var(--muted);font-size:.75rem;margin-top:8px}
+.chartbox{position:relative;height:360px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.res .ro b{font-size:1.1rem}
+.res .hi{border-color:rgba(255,209,102,.5);box-shadow:0 0 20px -8px #ffd166}
+.res .hi b{color:#ffd166}
+.calc{font-family:var(--mono);font-size:.78rem;color:var(--muted);line-height:1.7;margin-top:12px;background:#080d1b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;white-space:pre}
+details{border:1px solid var(--line);border-radius:12px;background:#0a1020;margin-bottom:10px;overflow:hidden}
+summary{cursor:pointer;padding:14px 16px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--mono);color:var(--accent);font-size:1.3rem;transition:transform .3s}
+details[open] summary::after{transform:rotate(45deg)}
+details[open]{border-color:rgba(var(--accent-rgb),.5)}
+.dbody{padding:2px 18px 16px;color:#b9c7e6;line-height:1.65;font-size:.93rem}
+.dbody p{margin:.5em 0}
+.eq{font-family:var(--mono);background:#060a16;border-left:3px solid var(--accent);padding:8px 12px;margin:10px 0;border-radius:6px;color:#fff;overflow-x:auto;white-space:pre}
+.dbody ul{padding-left:20px}.dbody li{margin:6px 0}
+@media (max-width:980px){.grid,.two{grid-template-columns:1fr}}
+@media (max-width:520px){.vbig{font-size:1.8rem}.chartbox{height:300px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Determining <span>Planck's Constant</span> with LEDs</h1>
+      <div class="sub">Interactive circuit simulation · threshold-voltage method · hardcoded lab dataset</div>
+    </div>
+    <div class="chips">
+      <div class="chip">R = <b>220 Ω</b></div>
+      <div class="chip">Supply = <b>7.75 V</b></div>
+      <div class="chip">e = <b>1.602×10⁻¹⁹ C</b></div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card canvas-card">
+      <canvas id="sim" aria-label="LED circuit animation"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Circuit Controls</h2>
+      <div class="colors" id="colors"></div>
+
+      <div class="vrow">
+        <div class="vbig"><span id="vBig">0.000</span><small>V</small></div>
+        <div class="chip">V<sub>th</sub> = <b id="vthChip">—</b></div>
+      </div>
+      <input type="range" id="slider" min="0" max="4" step="0.001" value="0" aria-label="Voltage across LED">
+      <div class="scale"><span>0.00 V</span><span>1.00</span><span>2.00</span><span>3.00</span><span>4.00 V</span></div>
+
+      <div class="btnrow">
+        <button class="btn" id="m10">−0.10</button>
+        <button class="btn" id="m01">−0.01</button>
+        <button class="btn" id="p01">+0.01</button>
+        <button class="btn" id="p10">+0.10</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn wide" id="jump">Jump to V<sub>th</sub></button>
+        <button class="btn" id="zero">Reset 0 V</button>
+        <button class="btn" id="sweep">▶ Sweep</button>
+      </div>
+
+      <div class="readouts">
+        <div class="ro full"><span>State</span><b class="status off" id="stateOut">OFF</b></div>
+        <div class="ro"><span>Diode current I</span><b id="iOut">—</b></div>
+        <div class="ro"><span>Margin V − V<sub>th</sub></span><b id="marOut">—</b></div>
+        <div class="ro"><span>Frequency f</span><b id="fOut">—</b></div>
+        <div class="ro"><span>Wavelength λ = c/f</span><b id="lOut">—</b></div>
+        <div class="ro"><span>Photon energy hf</span><b id="eOut">—</b></div>
+        <div class="ro"><span>Resistor drop IR</span><b id="irOut">—</b></div>
+      </div>
+      <div class="hint">Current follows the Shockley equation, I = I₀(e<sup>eV/nkT</sup> − 1), limited by the 220 Ω resistor: I ≤ (7.75 − V)/220. Electron speed is driven by this current (log-compressed for display so the whole range is visible).</div>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h2>Experimental Data · Threshold Voltages</h2>
+      <div class="tw"><table id="dataTable"></table></div>
+      <div class="hint">Click any measured voltage to load it into the simulator.</div>
+    </div>
+    <div class="card">
+      <h2>Linear Regression · V<sub>avg</sub> vs f</h2>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card sec">
+    <h2>Automatic Best-Fit Analysis</h2>
+    <div class="res" id="results"></div>
+    <div class="calc" id="calc"></div>
+  </div>
+
+  <div class="card sec">
+    <h2>Physics Notes</h2>
+    <details open>
+      <summary>1 · Physics of LED emission</summary>
+      <div class="dbody">
+        <p>An LED is a p–n junction made of a direct-bandgap semiconductor. Forward bias lowers the potential barrier so electrons from the n-side and holes from the p-side flow into the junction region and recombine. Each recombination releases the bandgap energy as one photon:</p>
+        <div class="eq">E_g = h f = hc / λ</div>
+        <p>An electron crossing the junction gains energy eV from the supply. Light only starts to appear once this energy reaches the gap, so at the turn-on (threshold) voltage:</p>
+        <div class="eq">e V_th ≈ E_g = h f</div>
+        <p>Wider-gap materials (blue, InGaN) need more voltage than narrower-gap ones (red, AlGaInP) — exactly the trend in the data: 1.908 V → 2.318 V → 2.650 V.</p>
+      </div>
+    </details>
+    <details>
+      <summary>2 · Deriving h from the slope</summary>
+      <div class="dbody">
+        <p>Start from energy balance at turn-on and solve for the voltage:</p>
+        <div class="eq">e V_th = h f   ⟹   V_th = (h / e) · f</div>
+        <p>This is a straight line y = m x + b with y = V_th, x = f and slope m = h/e. A least-squares fit gives:</p>
+        <div class="eq">m = Σ(f − f̄)(V − V̄) / Σ(f − f̄)²
+h = m · e       (e = 1.602×10⁻¹⁹ C)</div>
+        <p>The intercept b should be ≈ 0 V; a small non-zero value signals systematic offsets (series resistance, contact potential, visibility criterion).</p>
+      </div>
+    </details>
+    <details>
+      <summary>3 · Sources of experimental error</summary>
+      <div class="dbody">
+        <ul>
+          <li><b>Thermal broadening.</b> Carriers are spread over about kT ≈ 25.9 meV at 300 K, so emission is not a single frequency. The spectrum has a width of roughly 1.8 kT (≈ 20–30 nm) and the "colour" frequency used is only the nominal peak/dominant value.</li>
+          <li><b>Human visual threshold.</b> V_th is judged by eye. Because current rises exponentially with V, the glow becomes visible a bit below or above the true onset depending on room light, dark adaptation and LED brightness. Eye sensitivity also differs strongly across red, green and blue.</li>
+          <li><b>Nominal frequencies.</b> Values like 4.6, 5.6 and 6.4 ×10¹⁴ Hz are catalogue wavelengths, and the real peak varies between batches and shifts with temperature.</li>
+          <li><b>Series resistance and heating.</b> I·R_s inside the LED adds to the measured voltage, and junction heating lowers the bandgap slightly during the measurement.</li>
+          <li><b>Meter resolution and random scatter.</b> The ±0.01 V spread across the five trials sets the statistical uncertainty. With only three data points the fit uncertainty is large.</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= Constants & Data ================= */
+const E_CH = 1.602e-19, H_ACC = 6.62607015e-34, K_B = 1.380649e-23, T_K = 300, C_LIGHT = 2.998e8;
+const R_OHM = 220, V_SUPPLY = 7.75, N_IDEAL = 2, I_REF = 1e-3; // diode current = 1 mA at V_th
+
+const LEDS = {
+  red:   {name:'Red',   f:4.6e14, trials:[1.89,1.93,1.90,1.87,1.95], avg:1.908, color:'#ff2a3d', rgb:'255,42,61'},
+  green: {name:'Green', f:5.6e14, trials:[2.35,2.29,2.30,2.34,2.31], avg:2.318, color:'#2cff7a', rgb:'44,255,122'},
+  blue:  {name:'Blue',  f:6.4e14, trials:[2.63,2.67,2.65,2.64,2.66], avg:2.650, color:'#3a7bff', rgb:'58,123,255'}
+};
+const KEYS = ['red','green','blue'];
+
+/* ================= State ================= */
+const state = {key:'red', V:0};
+let phys = {I:0, lit:false, b:0, r:0, speed:0};
+
+/* ================= DOM ================= */
+const $ = id => document.getElementById(id);
+const slider = $('slider');
+
+/* ================= Physics ================= */
+function computePhysics(){
+  const led = LEDS[state.key], V = state.V;
+  const nVt = N_IDEAL * K_B * T_K / E_CH;
+  const I0 = I_REF / (Math.exp(led.avg / nVt) - 1);
+  const Ishock = I0 * (Math.exp(V / nVt) - 1);
+  const Imax = Math.max((V_SUPPLY - V) / R_OHM, 0);
+  const I = Math.min(Ishock, Imax);
+  const lit = V >= led.avg - 1e-9;
+  const r = Math.max(I / (V_SUPPLY / R_OHM), 0);
+  const speed = 380 * Math.pow(r, 0.3);
+  const b = lit ? Math.min(1, 0.3 + 0.7 * Math.sqrt(I / 0.02)) : Math.min(0.08, (I / I_REF) * 0.08);
+  phys = {I, lit, b, r, speed, Ishock, Imax};
+}
+function fmtI(I){
+  if (I < 1e-12) return '≈ 0 A';
+  if (I < 1e-6) return (I*1e9).toPrecision(3) + ' nA';
+  if (I < 1e-3) return (I*1e6).toPrecision(3) + ' µA';
+  return (I*1e3).toFixed(2) + ' mA';
+}
+
+/* ================= UI build ================= */
+(function buildUI(){
+  const box = $('colors');
+  KEYS.forEach(k=>{
+    const L = LEDS[k];
+    const b = document.createElement('button');
+    b.className = 'cbtn'; b.style.color = L.color; b.dataset.k = k;
+    b.innerHTML = `<i></i><span style="color:#dbe6ff">${L.name}</span><small>${(L.f/1e14).toFixed(1)}×10¹⁴ Hz</small>`;
+    b.addEventListener('click', ()=>setColor(k));
+    box.appendChild(b);
+  });
+
+  // data table
+  const t = $('dataTable');
+  let h = '<tr><th>LED</th><th>f (×10¹⁴ Hz)</th>' + [1,2,3,4,5].map(i=>`<th>T${i} (V)</th>`).join('') + '<th>V<sub>avg</sub> (V)</th></tr>';
+  KEYS.forEach(k=>{
+    const L = LEDS[k];
+    h += `<tr data-k="${k}"><td class="lab" style="color:${L.color}"><i></i>${L.name}</td><td>${(L.f/1e14).toFixed(1)}</td>` +
+      L.trials.map(v=>`<td class="clk" data-k="${k}" data-v="${v}">${v.toFixed(2)}</td>`).join('') +
+      `<td class="avg clk" data-k="${k}" data-v="${L.avg}">${L.avg.toFixed(3)}</td></tr>`;
+  });
+  t.innerHTML = h;
+  t.addEventListener('click', e=>{
+    const c = e.target.closest('td.clk'); if(!c) return;
+    setColor(c.dataset.k); setV(parseFloat(c.dataset.v));
+  });
+})();
+
+/* ================= Controls ================= */
+function setColor(k){
+  state.key = k;
+  const L = LEDS[k];
+  const root = document.documentElement.style;
+  root.setProperty('--accent', L.color);
+  root.setProperty('--accent-rgb', L.rgb);
+  document.querySelectorAll('.cbtn').forEach(b=>b.classList.toggle('active', b.dataset.k===k));
+  document.querySelectorAll('#dataTable tr[data-k]').forEach(r=>r.classList.toggle('act', r.dataset.k===k));
+  $('vthChip').textContent = L.avg.toFixed(3) + ' V';
+  highlightChart();
+  refresh();
+}
+function setV(v){
+  state.V = Math.min(4, Math.max(0, Math.round(v*1000)/1000));
+  slider.value = state.V;
+  refresh();
+}
+function refresh(){
+  computePhysics();
+  const L = LEDS[state.key];
+  $('vBig').textContent = state.V.toFixed(3);
+  const st = $('stateOut');
+  if (phys.lit){ st.textContent = '● EMITTING — V ≥ V_th'; st.className = 'status on'; }
+  else { st.textContent = '○ DARK — V < V_th'; st.className = 'status off'; }
+  $('iOut').textContent = fmtI(phys.I);
+  const m = state.V - L.avg;
+  $('marOut').textContent = (m>=0?'+':'−') + Math.abs(m).toFixed(3) + ' V';
+  $('fOut').textContent = (L.f/1e14).toFixed(1) + '×10¹⁴ Hz';
+  $('lOut').textContent = (C_LIGHT/L.f*1e9).toFixed(0) + ' nm';
+  $('eOut').textContent = (H_ACC*L.f/E_CH).toFixed(3) + ' eV';
+  $('irOut').textContent = (phys.I*R_OHM).toFixed(3) + ' V';
+}
+slider.addEventListener('input', ()=>{ stopSweep(); setV(parseFloat(slider.value)); });
+
+function holdBtn(id, delta){
+  const el = $(id); let to=null, iv=null;
+  const step = ()=>{ stopSweep(); setV(state.V + delta); };
+  const stop = ()=>{ clearTimeout(to); clearInterval(iv); };
+  el.addEventListener('pointerdown', e=>{ e.preventDefault(); step(); to=setTimeout(()=>{iv=setInterval(step,70)},400); });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev, stop));
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); step(); } });
+}
+holdBtn('m10',-0.10); holdBtn('m01',-0.01); holdBtn('p01',0.01); holdBtn('p10',0.10);
+$('jump').addEventListener('click', ()=>{ stopSweep(); setV(LEDS[state.key].avg); });
+$('zero').addEventListener('click', ()=>{ stopSweep(); setV(0); });
+
+let sweeping = false, sweepTimer = null;
+function stopSweep(){ sweeping=false; clearInterval(sweepTimer); $('sweep').textContent='▶ Sweep'; }
+$('sweep').addEventListener('click', ()=>{
+  if (sweeping){ stopSweep(); return; }
+  sweeping = true; $('sweep').textContent = '■ Stop';
+  if (state.V >= 3.99) setV(0);
+  sweepTimer = setInterval(()=>{
+    if (state.V >= 4){ stopSweep(); return; }
+    setV(state.V + 0.01);
+  }, 40);
+});
+
+/* ================= Regression ================= */
+function regression(){
+  const xs = KEYS.map(k=>LEDS[k].f), ys = KEYS.map(k=>LEDS[k].avg), n = xs.length;
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+  let sxx=0, sxy=0, syy=0;
+  for (let i=0;i<n;i++){ sxx += (xs[i]-mx)**2; sxy += (xs[i]-mx)*(ys[i]-my); syy += (ys[i]-my)**2; }
+  const m = sxy/sxx, b = my - m*mx;
+  let ssr = 0; for (let i=0;i<n;i++){ ssr += (ys[i]-(m*xs[i]+b))**2; }
+  const r2 = 1 - ssr/syy;
+  const se = Math.sqrt((ssr/(n-2))/sxx);
+  const h = m*E_CH, hErr = se*E_CH;
+  const pct = (h - H_ACC)/H_ACC*100;
+  return {xs,ys,mx,my,sxx,sxy,syy,m,b,r2,se,h,hErr,pct};
+}
+const REG = regression();
+
+function renderResults(){
+  const R = REG, f2 = v=>v.toExponential(3);
+  const items = [
+    ['Slope m = ΔV/Δf', f2(R.m) + ' V/Hz', false],
+    ['Intercept b', R.b.toFixed(4) + ' V', false],
+    ['R²', R.r2.toFixed(5), false],
+    ['h_exp = m · e', (R.h/1e-34).toFixed(3) + ' × 10⁻³⁴ J·s', true],
+    ['h_accepted', (H_ACC/1e-34).toFixed(5) + ' × 10⁻³⁴ J·s', false],
+    ['Percent error', Math.abs(R.pct).toFixed(2) + ' %  (' + (R.pct<0?'below':'above') + ')', true],
+    ['Std. error of h (n=3)', '± ' + (R.hErr/1e-34).toFixed(3) + ' × 10⁻³⁴ J·s', false]
+  ];
+  $('results').innerHTML = items.map(([a,b,hi])=>`<div class="ro ${hi?'hi':''}"><span>${a}</span><b>${b}</b></div>`).join('');
+  const pad = (s,n)=>String(s).padEnd(n);
+  $('calc').textContent =
+`f̄ = ${(R.mx/1e14).toFixed(4)}×10¹⁴ Hz     V̄ = ${R.my.toFixed(4)} V
+Σ(f−f̄)²        = ${R.sxx.toExponential(4)} Hz²
+Σ(f−f̄)(V−V̄)    = ${R.sxy.toExponential(4)} V·Hz
+m = Sxy / Sxx   = ${R.m.toExponential(4)} V/Hz
+h_exp = m × e   = ${R.m.toExponential(4)} × 1.602×10⁻¹⁹ = ${R.h.toExponential(4)} J·s
+% error = |h_exp − h_acc| / h_acc × 100 = ${Math.abs(R.pct).toFixed(3)} %`;
+}
+renderResults();
+
+/* ================= Chart ================= */
+let chart = null;
+function buildChart(){
+  if (typeof Chart === 'undefined'){
+    document.querySelector('.chartbox').innerHTML = '<p style="color:#7f92b8;padding:20px">Chart.js could not be loaded (check your internet connection).</p>';
+    return;
+  }
+  Chart.defaults.color = '#9fb2d8';
+  Chart.defaults.font.family = 'ui-monospace,Menlo,Consolas,monospace';
+  const trialPts = [], trialCols = [];
+  KEYS.forEach(k=>LEDS[k].trials.forEach(v=>{ trialPts.push({x:LEDS[k].f, y:v}); trialCols.push(LEDS[k].color+'99'); }));
+  const avgPts = KEYS.map(k=>({x:LEDS[k].f, y:LEDS[k].avg}));
+  const x0 = 4.0e14, x1 = 7.0e14;
+  chart = new Chart($('chart'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'Individual trials', data:trialPts, backgroundColor:trialCols, borderColor:'transparent', pointRadius:4, order:3},
+      {label:'Average V_avg', data:avgPts, backgroundColor:KEYS.map(k=>LEDS[k].color), borderColor:'#fff', borderWidth:2, pointRadius:[9,7,7], pointHoverRadius:11, order:1},
+      {label:`Best fit: V = ${(REG.m/1e-15).toFixed(3)}×10⁻¹⁵·f + ${REG.b.toFixed(3)}`, type:'line', data:[{x:x0,y:REG.m*x0+REG.b},{x:x1,y:REG.m*x1+REG.b}], borderColor:'#ffd166', borderWidth:2.5, pointRadius:0, order:2},
+      {label:'Accepted: V = (h/e)·f', type:'line', data:[{x:x0,y:H_ACC/E_CH*x0},{x:x1,y:H_ACC/E_CH*x1}], borderColor:'#8fa0c4', borderDash:[6,5], borderWidth:1.5, pointRadius:0, order:4}
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:600},
+      scales:{
+        x:{type:'linear', min:x0, max:x1, title:{display:true,text:'Frequency f (Hz)'}, grid:{color:'rgba(255,255,255,.06)'},
+           ticks:{stepSize:0.5e14, callback:v=>(v/1e14).toFixed(1)+'×10¹⁴'}},
+        y:{min:1.5, max:3.0, title:{display:true,text:'Average threshold voltage V_avg (V)'}, grid:{color:'rgba(255,255,255,.06)'},
+           ticks:{callback:v=>v.toFixed(1)}}
+      },
+      plugins:{
+        legend:{labels:{boxWidth:12, usePointStyle:true, font:{size:11}}},
+        tooltip:{callbacks:{label:c=>` f = ${(c.parsed.x/1e14).toFixed(2)}×10¹⁴ Hz,  V = ${c.parsed.y.toFixed(3)} V`}}
+      }
+    }
+  });
+  highlightChart();
+}
+function highlightChart(){
+  if (!chart) return;
+  const idx = KEYS.indexOf(state.key);
+  chart.data.datasets[1].pointRadius = KEYS.map((_,i)=>i===idx?11:6);
+  chart.data.datasets[1].borderWidth = KEYS.map((_,i)=>i===idx?3:1.5);
+  chart.update('none');
+}
+buildChart();
+
+/* ================= Canvas simulation ================= */
+const cv = $('sim'), ctx = cv.getContext('2d');
+const W = 900, H = 460;
+let scale = 1;
+function resize(){
+  const w = cv.parentElement.clientWidth - 20;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.style.width = w + 'px'; cv.style.height = (w*H/W) + 'px';
+  cv.width = Math.round(w*dpr); cv.height = Math.round(w*H/W*dpr);
+  scale = cv.width / W;
+}
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(cv.parentElement);
+resize();
+
+// circuit geometry
+const PTS = [[110,330],[560,330],[560,110],[110,110],[110,330]];
+const SEG = []; let LOOP = 0;
+for (let i=0;i<PTS.length-1;i++){
+  const [x0,y0]=PTS[i], [x1,y1]=PTS[i+1];
+  const len = Math.hypot(x1-x0,y1-y0);
+  SEG.push({x0,y0,dx:(x1-x0)/len,dy:(y1-y0)/len,len,start:LOOP}); LOOP += len;
+}
+function posAt(s, off){
+  s = ((s%LOOP)+LOOP)%LOOP;
+  for (const g of SEG){
+    if (s <= g.start+g.len){
+      const t = s-g.start;
+      return [g.x0+g.dx*t - g.dy*off, g.y0+g.dy*t + g.dx*off];
+    }
+  }
+  return [PTS[0][0],PTS[0][1]];
+}
+const LED_X = 560, LED_Y = 220, BULB_R = 40, DET_X = 790, DET_Y = 220;
+
+const electrons = [];
+for (let i=0;i<72;i++) electrons.push({s:i*LOOP/72, off:(Math.random()-0.5)*5});
+const photons = [];
+let photonAcc = 0, detLevel = 0, time = 0, hitsThisFrame = 0;
+
+function update(dt){
+  time += dt;
+  for (const e of electrons) e.s += phys.speed * dt;
+  // photon emission
+  if (phys.lit){
+    const rate = 10 + 120*Math.pow(phys.r, 0.35);
+    photonAcc += rate*dt;
+    while (photonAcc >= 1 && photons.length < 320){
+      photonAcc -= 1;
+      const sx = LED_X + 30, sy = LED_Y + (Math.random()-0.5)*50;
+      const ang = Math.atan2(DET_Y-sy, DET_X-sx) + (Math.random()-0.5)*0.16;
+      const sp = 300 + Math.random()*80;
+      photons.push({x:sx,y:sy,a:ang,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,ph:Math.random()*6.28,col:LEDS[state.key].color});
+    }
+    if (photonAcc > 5) photonAcc = 0;
+  } else photonAcc = 0;
+  let hits = 0;
+  for (let i=photons.length-1;i>=0;i--){
+    const p = photons[i];
+    p.x += p.vx*dt; p.y += p.vy*dt; p.ph += dt*30;
+    if (p.x >= DET_X-4 && Math.abs(p.y-DET_Y) <= 62){ hits++; photons.splice(i,1); }
+    else if (p.x > W+20 || p.y < -20 || p.y > H+20) photons.splice(i,1);
+  }
+  detLevel += hits*0.045;
+  detLevel *= Math.exp(-dt*4);
+  detLevel = Math.min(detLevel, 1.2);
+}
+
+function rgba(rgb,a){ return `rgba(${rgb},${a})`; }
+
+function draw(){
+  const L = LEDS[state.key];
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  // background
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#070c1a'); bg.addColorStop(1,'#04060d');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(80,110,170,.07)'; ctx.lineWidth = 1;
+  for (let x=0;x<=W;x+=30){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0;y<=H;y+=30){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // ambient room glow
+  if (phys.b > 0.02){
+    const g = ctx.createRadialGradient(LED_X,LED_Y,10,LED_X,LED_Y,380);
+    g.addColorStop(0, rgba(L.rgb, 0.22*phys.b)); g.addColorStop(1, rgba(L.rgb, 0));
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  }
+
+  const flow = Math.pow(Math.max(phys.r,0), 0.3);
+
+  // wires
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#26344f'; ctx.lineWidth = 5;
+  ctx.beginPath(); PTS.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.stroke();
+  ctx.strokeStyle = `rgba(90,200,255,${0.12+0.5*flow})`; ctx.lineWidth = 2;
+  ctx.beginPath(); PTS.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.stroke();
+
+  // voltmeter branch (dashed)
+  ctx.setLineDash([5,5]); ctx.strokeStyle = '#3a4d73'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(500,110); ctx.lineTo(500,198); ctx.moveTo(500,242); ctx.lineTo(500,330); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // electrons
+  ctx.save();
+  ctx.shadowColor = '#4db8ff'; ctx.shadowBlur = 8;
+  const ea = 0.55 + 0.45*flow;
+  for (const e of electrons){
+    const [x,y] = posAt(e.s, e.off);
+    ctx.fillStyle = `rgba(110,210,255,${ea})`;
+    ctx.beginPath(); ctx.arc(x,y,3.2,0,6.283); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${0.6*ea})`;
+    ctx.beginPath(); ctx.arc(x-0.6,y-0.6,1,0,6.283); ctx.fill();
+  }
+  ctx.restore();
+
+  // ---- Battery ----
+  ctx.fillStyle = '#060a16'; ctx.fillRect(92,190,36,60);
+  ctx.strokeStyle = '#dbe6ff'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(110,190); ctx.lineTo(110,205); ctx.moveTo(110,235); ctx.lineTo(110,250); ctx.stroke();
+  ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(94,205); ctx.lineTo(126,205); ctx.stroke();
+  ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(100,235); ctx.lineTo(120,235); ctx.stroke();
+  ctx.fillStyle = '#ff6b6b'; ctx.font = 'bold 15px ui-monospace,monospace'; ctx.textAlign = 'left';
+  ctx.fillText('+', 130, 205); ctx.fillStyle = '#7fb0ff'; ctx.fillText('−', 132, 240);
+  ctx.fillStyle = '#9fb2d8'; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('7.75 V', 110, 275); ctx.fillText('SUPPLY', 110, 292);
+
+  // ---- Resistor ----
+  ctx.fillStyle = '#060a16'; ctx.fillRect(248,96,144,28);
+  ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 3; ctx.shadowColor='#ffb347'; ctx.shadowBlur = 6*flow;
+  ctx.beginPath(); ctx.moveTo(248,110);
+  const zs = 8, zw = 144/ zs;
+  ctx.lineTo(262,110);
+  for (let i=0;i<zs-2;i++){ ctx.lineTo(262+zw*(i+0.5)*(116/ (144-28)) *1.0 + 0, 110 + (i%2?10:-10)); }
+  ctx.lineTo(378,110); ctx.lineTo(392,110); ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffb347'; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('R = 220 Ω', 320, 82);
+
+  // ---- Ammeter ----
+  ctx.fillStyle = '#060a16'; ctx.beginPath(); ctx.arc(330,330,20,0,6.283); ctx.fill();
+  ctx.strokeStyle = '#5ac8ff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(330,330,18,0,6.283); ctx.stroke();
+  ctx.fillStyle = '#5ac8ff'; ctx.font = 'bold 16px ui-monospace,monospace'; ctx.textBaseline = 'middle'; ctx.fillText('A',330,331);
+  ctx.textBaseline = 'alphabetic'; ctx.font = '13px ui-monospace,monospace';
+  ctx.fillText(fmtI(phys.I), 330, 370);
+
+  // ---- Voltmeter ----
+  ctx.fillStyle = '#060a16'; ctx.beginPath(); ctx.arc(500,220,20,0,6.283); ctx.fill();
+  ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(500,220,18,0,6.283); ctx.stroke();
+  ctx.fillStyle = '#ffd166'; ctx.font = 'bold 16px ui-monospace,monospace'; ctx.textBaseline = 'middle'; ctx.fillText('V',500,221);
+  ctx.textBaseline = 'alphabetic'; ctx.font = '13px ui-monospace,monospace';
+  ctx.fillText(state.V.toFixed(3)+' V', 500, 262);
+
+  // ---- LED ----
+  const b = phys.b;
+  // legs hide wire
+  ctx.fillStyle = '#060a16'; ctx.fillRect(LED_X-14, LED_Y-BULB_R-12, 28, 2*BULB_R+24);
+  ctx.strokeStyle = '#26344f'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(LED_X,110); ctx.lineTo(LED_X,LED_Y-BULB_R+6); ctx.moveTo(LED_X,LED_Y+BULB_R-6); ctx.lineTo(LED_X,330); ctx.stroke();
+  // halo
+  if (b > 0.01){
+    const hr = BULB_R + 20 + b*110;
+    const g = ctx.createRadialGradient(LED_X,LED_Y,BULB_R*0.4,LED_X,LED_Y,hr);
+    g.addColorStop(0, rgba(L.rgb, 0.85*b)); g.addColorStop(0.45, rgba(L.rgb, 0.30*b)); g.addColorStop(1, rgba(L.rgb, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(LED_X,LED_Y,hr,0,6.283); ctx.fill();
+    // light cone toward detector
+    const cg = ctx.createLinearGradient(LED_X,0,DET_X,0);
+    cg.addColorStop(0, rgba(L.rgb, 0.16*b)); cg.addColorStop(1, rgba(L.rgb, 0.03*b));
+    ctx.fillStyle = cg; ctx.beginPath();
+    ctx.moveTo(LED_X+30, LED_Y-22); ctx.lineTo(DET_X, DET_Y-60); ctx.lineTo(DET_X, DET_Y+60); ctx.lineTo(LED_X+30, LED_Y+22); ctx.closePath(); ctx.fill();
+  }
+  // bulb
+  const bulb = ctx.createRadialGradient(LED_X-12,LED_Y-14,4,LED_X,LED_Y,BULB_R);
+  bulb.addColorStop(0, rgba(L.rgb, 0.18 + 0.75*b)); bulb.addColorStop(1, rgba(L.rgb, 0.06 + 0.35*b));
+  ctx.fillStyle = bulb; ctx.beginPath(); ctx.arc(LED_X,LED_Y,BULB_R,0,6.283); ctx.fill();
+  ctx.shadowColor = L.color; ctx.shadowBlur = 6 + 28*b;
+  ctx.strokeStyle = rgba(L.rgb, 0.55 + 0.45*b); ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(LED_X,LED_Y,BULB_R,0,6.283); ctx.stroke(); ctx.shadowBlur = 0;
+  // glass reflection
+  ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(LED_X,LED_Y,BULB_R-7,3.6,4.5); ctx.stroke();
+  // diode symbol (anode top, current flows down)
+  const sc = b > 0.01 ? '#fff' : '#8a94ab';
+  ctx.strokeStyle = sc; ctx.fillStyle = b>0.01 ? rgba(L.rgb,0.9) : 'rgba(120,130,150,.35)'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(LED_X-14,LED_Y-12); ctx.lineTo(LED_X+14,LED_Y-12); ctx.lineTo(LED_X,LED_Y+10); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(LED_X-16,LED_Y+12); ctx.lineTo(LED_X+16,LED_Y+12); ctx.stroke();
+  ctx.fillStyle = '#9fb2d8'; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.fillText(L.name.toUpperCase()+' LED', LED_X, LED_Y+BULB_R+26);
+  ctx.fillText('V_th = '+L.avg.toFixed(3)+' V', LED_X, LED_Y+BULB_R+43);
+
+  // ---- Photons ----
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const p of photons){
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a);
+    ctx.strokeStyle = p.col; ctx.globalAlpha = 0.85; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i=0;i<=18;i++){ const x=-i*1.3, y=Math.sin(p.ph - i*0.65)*3.6; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.stroke();
+    ctx.shadowColor = p.col; ctx.shadowBlur = 12; ctx.globalAlpha = 1; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(0,0,2.6,0,6.283); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // ---- Photo-detector ----
+  const dl = Math.min(detLevel,1);
+  ctx.fillStyle = '#0d1426'; ctx.strokeStyle = '#2d3f66'; ctx.lineWidth = 2;
+  roundRect(DET_X, DET_Y-70, 72, 140, 10); ctx.fill(); ctx.stroke();
+  const wg = ctx.createLinearGradient(DET_X,0,DET_X+24,0);
+  wg.addColorStop(0, rgba(L.rgb, 0.12+0.8*dl)); wg.addColorStop(1, rgba(L.rgb, 0.05));
+  ctx.shadowColor = L.color; ctx.shadowBlur = 24*dl; ctx.fillStyle = wg;
+  roundRect(DET_X+4, DET_Y-58, 22, 116, 6); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#1a2542'; ctx.fillRect(DET_X+34,DET_Y-44,28,88);
+  // intensity bars
+  for (let i=0;i<10;i++){
+    const on = dl*10 > i;
+    ctx.fillStyle = on ? L.color : '#222d49';
+    ctx.fillRect(DET_X+38, DET_Y+36-i*8, 20, 5);
+  }
+  ctx.fillStyle = '#9fb2d8'; ctx.font = '12px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('PHOTO-DETECTOR', DET_X+36, DET_Y+92);
+  ctx.fillText(Math.round(dl*100)+'% signal', DET_X+36, DET_Y+108);
+
+  // ---- HUD ----
+  ctx.textAlign = 'left'; ctx.fillStyle = '#6f84ad'; ctx.font = '13px ui-monospace,monospace';
+  ctx.fillText('I = I₀ ( e^(eV/nkT) − 1 )   n=2, T=300 K', 18, 28);
+  ctx.fillStyle = '#5a6d94'; ctx.fillText('● electrons (flow − → +)   ∿ photons (hf = eV_th)', 18, 48);
+  const on = phys.lit;
+  const label = on ? 'EMITTING · V ≥ V_th' : 'DARK · V < V_th';
+  ctx.font = 'bold 13px ui-monospace,monospace';
+  const tw = ctx.measureText(label).width + 28;
+  ctx.fillStyle = on ? rgba(L.rgb,0.16) : 'rgba(120,130,150,.12)';
+  ctx.strokeStyle = on ? L.color : '#3a4660'; ctx.lineWidth = 1.5;
+  roundRect(W-tw-18, 14, tw, 30, 15); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = on ? L.color : '#8a94ab'; ctx.textAlign = 'center';
+  ctx.fillText(label, W-18-tw/2, 34);
+  // bottom info
+  ctx.textAlign = 'left'; ctx.fillStyle = '#6f84ad'; ctx.font = '13px ui-monospace,monospace';
+  ctx.fillText(`E = hf = ${(H_ACC*L.f/E_CH).toFixed(3)} eV     f = ${(L.f/1e14).toFixed(1)}×10¹⁴ Hz     λ ≈ ${(C_LIGHT/L.f*1e9).toFixed(0)} nm`, 18, H-18);
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+let last = performance.now();
+function frame(t){
+  const dt = Math.min((t-last)/1000, 0.05); last = t;
+  update(dt); draw();
+  requestAnimationFrame(frame);
+}
+
+/* ================= Init ================= */
+setColor('red');
+setV(0);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
